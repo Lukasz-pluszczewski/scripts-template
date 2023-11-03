@@ -3,11 +3,12 @@
     "target": "ES2020",
     "module": "commonjs",
     "allowJs": true,
-    "strict": false,
+    "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "jsx": "react",
+    "types": ["bun-types"]
   },
   "transpileOnly": true,
   "$schema": "https://json.schemastore.org/tsconfig",

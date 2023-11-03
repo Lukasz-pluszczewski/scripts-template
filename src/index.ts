@@ -35,6 +35,9 @@ const args = getArgs(process.argv.slice(2).filter((arg, index) => (arg !== '--' 
     await module.default({
       ...args,
       _: args._.slice(1),
+    }, {
+      rootPath: path.resolve('./'),
+      path: path.resolve('./src'),
     });
   }
 })();

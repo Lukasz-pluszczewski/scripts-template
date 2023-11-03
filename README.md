@@ -41,7 +41,7 @@ its args param will be:
 ### Usage with node
 If you use node instead of [bun](https://bun.sh/), replace `bun start` with `npm run start-node` and run the following first:
 
-```shell
+```bash
 npm i dotenv
 npm i --save-dev ts-node typescript
 ```
