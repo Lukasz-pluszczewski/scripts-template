@@ -1,6 +1,8 @@
-import getArgs, { Arguments } from 'yargs-parser';
+import getArgs from 'yargs-parser';
 import fs from 'fs/promises';
 import path from 'path';
+
+export { Arguments } from 'yargs-parser';
 
 const args = getArgs(process.argv.slice(2).filter((arg, index) => (arg !== '--' || index)), {
   configuration: {
@@ -70,8 +72,7 @@ const fileExists = async (filePath: string) => fs.access(filePath)
   }
 })();
 
-export type FirstArgument = Arguments;
-export type SecondArgument = {
+export type Context = {
   rootDir: string,
   scriptDir: string,
 }
