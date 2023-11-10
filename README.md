@@ -2,13 +2,19 @@
 > Script runner for fast prototyping
 
 ### Run the given script
-To run the index-foo.ts file:
+To run the `src/index-foo.ts` file:
 ```bash
 bun start foo
 ```
 
+## Run the script in directory
+To run the `src/bar/index.ts` file (if there is both `src/bar/index.ts` and `src/index-bar.ts` the index-bar.ts file will run):
+```bash
+bun start bar
+```
+
 ### Run the default script
-To run the index-default.ts file
+To run the `src/index-default.ts` file
 ```bash
 bun start
 ```

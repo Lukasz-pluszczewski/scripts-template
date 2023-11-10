@@ -1,4 +1,3 @@
-import { describe, expect, it, jest } from 'bun:test';
 import {
   asyncMap,
   asyncForEach,
@@ -65,7 +64,7 @@ describe('asyncCollections', () => {
     });
 
     it('should break on encountering Break', async () => {
-      const mockCallback: any = jest.fn(async (value) => {
+      const mockCallback = jest.fn(async (value): Promise<typeof Break | undefined> => {
         if (value === 2) return Break;
       });
       const data = [1, 2, 3];
