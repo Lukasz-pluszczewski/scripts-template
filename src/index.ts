@@ -8,52 +8,70 @@ const args = getArgs(process.argv.slice(2).filter((arg, index) => (arg !== '--' 
   },
 });
 
+const fileExists = async (filePath: string) => fs.access(filePath)
+  .then(() => true)
+  .catch(() => false);
+
 (async () => {
   const scriptName = args._[0] || 'default';
   if (!scriptName) {
     console.log('Please provide a script name');
     return;
   }
-  const { fileName, filePath } = await (async () => {
+  const { fileName, fileDir, filePath, filePathForImport } = await (async () => {
     const fileNameRoot = `index-${scriptName}.ts`;
-    const filePathRoot = `./${fileNameRoot}`;
+    const fileDirectoryRoot = `./src`;
+    const filePathRoot = `${fileDirectoryRoot}/${fileNameRoot}`;
+    const filePathForImportRoot = `./${fileNameRoot}`;
 
     const fileNameDirectory = `index.ts`;
-    const filePathDirectory = `./${scriptName}/${fileNameDirectory}`;
+    const fileDirectoryDirectory = `./src/${scriptName}`;
+    const filePathDirectory = `${fileDirectoryDirectory}/${fileNameDirectory}`;
+    const filePathForImportDirectory = `./${scriptName}/${fileNameDirectory}`;
 
-    if (await fs.access(path.resolve(__dirname, filePathRoot)).then(() => true).catch(() => false)) {
-      return { fileName: fileNameRoot, filePath: filePathRoot };
+    if (await fileExists(path.resolve(filePathRoot))) {
+      return {
+        fileName: fileNameRoot,
+        fileDir: fileDirectoryRoot,
+        filePath: filePathRoot,
+        filePathForImport: filePathForImportRoot
+      };
     }
 
-    if (await fs.access(path.resolve(__dirname, filePathDirectory)).then(() => true).catch(() => false)) {
-      return { fileName: fileNameDirectory, filePath: filePathDirectory };
+    if (await fileExists(path.resolve(filePathDirectory))) {
+      return {
+        fileName: fileNameDirectory,
+        fileDir: fileDirectoryDirectory,
+        filePath: filePathDirectory,
+        filePathForImport: filePathForImportDirectory
+      };
     }
 
     console.error(`Tried to run the script ${scriptName} but neither "${filePathRoot}" nor "${filePathDirectory}" exists`);
     return { fileName: null, filePath: null };
   })();
-  if (!fileName || !filePath) {
+  if (!fileName || !fileDir || !filePath) {
     return;
   }
 
   console.log('Running script', filePath);
   console.log('');
 
-  const module = await import(filePath);
+  const module = await import(filePathForImport);
 
   if (typeof module.default === 'function') {
     await module.default({
       ...args,
       _: args._.slice(1),
     }, {
-      rootPath: path.resolve('./'),
-      path: path.resolve('./src'),
+      rootDir: path.resolve('./'),
+      scriptDir: path.resolve(fileDir),
     });
   }
 })();
 
 export type FirstArgument = Arguments;
 export type SecondArgument = {
-  rootPath: string,
-  path: string,
+  rootDir: string,
+  scriptDir: string,
 }
