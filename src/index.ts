@@ -2,7 +2,7 @@ import getArgs from 'yargs-parser';
 import fs from 'fs/promises';
 import path from 'path';
 
-export { Arguments } from 'yargs-parser';
+export type { Arguments } from 'yargs-parser';
 
 const args = getArgs(process.argv.slice(2).filter((arg, index) => (arg !== '--' || index)), {
   configuration: {
