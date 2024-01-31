@@ -6,6 +6,7 @@
   "main": "dist",
   "scripts": {
     "start": "NODE_PATH=src ENV=development bun run src/index.ts",
+    "start:watch": "NODE_PATH=src ENV=development bun --watch run src/index.ts",
     "start-node": "NODE_PATH=src ENV=development NODE_OPTIONS='-r dotenv/config' ts-node src/index.ts",
     "test": "bun test"
   },
