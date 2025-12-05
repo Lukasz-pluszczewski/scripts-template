@@ -1,18 +1,23 @@
-import getArgs from 'yargs-parser';
 import fs from 'fs/promises';
 import path from 'path';
+import getArgs from 'yargs-parser';
 
 export type { Arguments } from 'yargs-parser';
+console.log('process.argv', process.argv);
+const args = getArgs(
+  process.argv.slice(2).filter((arg, index) => arg !== '--' || index),
+  {
+    configuration: {
+      'populate--': true,
+    },
+  }
+);
 
-const args = getArgs(process.argv.slice(2).filter((arg, index) => (arg !== '--' || index)), {
-  configuration: {
-    'populate--': true,
-  },
-});
-
-const fileExists = async (filePath: string) => fs.access(filePath)
-  .then(() => true)
-  .catch(() => false);
+const fileExists = async (filePath: string) =>
+  fs
+    .access(filePath)
+    .then(() => true)
+    .catch(() => false);
 
 (async () => {
   const scriptName = args._[0] || 'default';
@@ -20,38 +25,41 @@ const fileExists = async (filePath: string) => fs.access(filePath)
     console.log('Please provide a script name');
     return;
   }
-  const { fileName, fileDir, filePath, filePathForImport } = await (async () => {
-    const fileNameRoot = `index-${scriptName}.ts`;
-    const fileDirectoryRoot = `./src`;
-    const filePathRoot = `${fileDirectoryRoot}/${fileNameRoot}`;
-    const filePathForImportRoot = `./${fileNameRoot}`;
+  const { fileName, fileDir, filePath, filePathForImport } =
+    await (async () => {
+      const fileNameRoot = `index-${scriptName}.ts`;
+      const fileDirectoryRoot = `./src`;
+      const filePathRoot = `${fileDirectoryRoot}/${fileNameRoot}`;
+      const filePathForImportRoot = `./${fileNameRoot}`;
 
-    const fileNameDirectory = `index.ts`;
-    const fileDirectoryDirectory = `./src/${scriptName}`;
-    const filePathDirectory = `${fileDirectoryDirectory}/${fileNameDirectory}`;
-    const filePathForImportDirectory = `./${scriptName}/${fileNameDirectory}`;
+      const fileNameDirectory = `index.ts`;
+      const fileDirectoryDirectory = `./src/${scriptName}`;
+      const filePathDirectory = `${fileDirectoryDirectory}/${fileNameDirectory}`;
+      const filePathForImportDirectory = `./${scriptName}/${fileNameDirectory}`;
 
-    if (await fileExists(path.resolve(filePathRoot))) {
-      return {
-        fileName: fileNameRoot,
-        fileDir: fileDirectoryRoot,
-        filePath: filePathRoot,
-        filePathForImport: filePathForImportRoot
-      };
-    }
+      if (await fileExists(path.resolve(filePathRoot))) {
+        return {
+          fileName: fileNameRoot,
+          fileDir: fileDirectoryRoot,
+          filePath: filePathRoot,
+          filePathForImport: filePathForImportRoot,
+        };
+      }
 
-    if (await fileExists(path.resolve(filePathDirectory))) {
-      return {
-        fileName: fileNameDirectory,
-        fileDir: fileDirectoryDirectory,
-        filePath: filePathDirectory,
-        filePathForImport: filePathForImportDirectory
-      };
-    }
+      if (await fileExists(path.resolve(filePathDirectory))) {
+        return {
+          fileName: fileNameDirectory,
+          fileDir: fileDirectoryDirectory,
+          filePath: filePathDirectory,
+          filePathForImport: filePathForImportDirectory,
+        };
+      }
 
-    console.error(`Tried to run the script ${scriptName} but neither "${filePathRoot}" nor "${filePathDirectory}" exists`);
-    return { fileName: null, filePath: null };
-  })();
+      console.error(
+        `Tried to run the script ${scriptName} but neither "${filePathRoot}" nor "${filePathDirectory}" exists`
+      );
+      return { fileName: null, filePath: null };
+    })();
   if (!fileName || !fileDir || !filePath) {
     return;
   }
@@ -62,10 +70,15 @@ const fileExists = async (filePath: string) => fs.access(filePath)
   const module = await import(filePathForImport);
 
   if (typeof module.default === 'function') {
-    await module.default({
+    const functionArguments = {
       ...args,
       _: args._.slice(1),
-    }, {
+    };
+    console.log('functionArguments', functionArguments);
+    const parsedArguments = module.schema
+      ? module.schema.parse(functionArguments)
+      : functionArguments;
+    await module.default(parsedArguments, {
       rootDir: path.resolve('./'),
       scriptDir: path.resolve(fileDir),
     });
@@ -73,6 +86,6 @@ const fileExists = async (filePath: string) => fs.access(filePath)
 })();
 
 export type Context = {
-  rootDir: string,
-  scriptDir: string,
-}
+  rootDir: string;
+  scriptDir: string;
+};

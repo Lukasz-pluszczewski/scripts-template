@@ -8,7 +8,9 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "jsx": "react",
-    "types": ["bun-types"]
+    "types": ["bun-types"],
+    "noImplicitAny": false,
+    "resolveJsonModule": true
   },
   "transpileOnly": true,
   "$schema": "https://json.schemastore.org/tsconfig",

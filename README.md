@@ -22,7 +22,7 @@ bun start
 ### Run the script with arguments and options
 To run the index-foo.ts file with arguments:
 ```bash
-bun start foo -- argument -a -b --arg1=foo --arg2=bar -- --arg3=foobar
+bun start foo argument -a -b --arg1=foo --arg2=bar -- --arg3=foobar
 ```
 
 If index-foo.ts file exports a function like this:
@@ -47,7 +47,12 @@ its args param will be:
 ### Usage with node
 If you use node instead of [bun](https://bun.sh/), replace `bun start` with `npm run start-node` and run the following first:
 
+When starting the script using node, you may need to add `--` before the arguments like this:
+```bash
+npm run start-node -- argument -a -b
+```
+
 ```bash
 npm i dotenv
-npm i --save-dev ts-node typescript
+npm i --save-dev ts-node typescript dotenv
 ```
