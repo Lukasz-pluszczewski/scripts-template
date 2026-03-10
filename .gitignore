@@ -9,3 +9,4 @@
 !/logs/.gitkeep
 /savedLogs/*
 !/savedLogs/.gitkeep
+/src/steam-hwsurvey/cache/
