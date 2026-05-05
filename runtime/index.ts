@@ -4,6 +4,7 @@ import { help } from './help';
 import { loadEnvFiles, resolveScriptEntry } from './scriptRuntime';
 
 export type { Arguments } from 'yargs-parser';
+
 const args = getArgs(
   process.argv.slice(2).filter((arg, index) => arg !== '--' || index),
   {

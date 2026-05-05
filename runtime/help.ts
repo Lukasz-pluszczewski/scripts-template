@@ -78,7 +78,7 @@ export const help = () => {
   const scripts = getRunnableScripts(rootDir);
   const scriptLines =
     scripts.length > 0
-      ? scripts.map((script) => {
+      ? scripts.map(script => {
           const markers = [
             script.isDefault ? 'default' : null,
             script.kind,

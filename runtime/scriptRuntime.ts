@@ -1,6 +1,6 @@
+import dotenv from 'dotenv';
 import fs from 'fs/promises';
 import path from 'path';
-import dotenv from 'dotenv';
 
 export type ScriptEntry = {
   fileName: string;

@@ -1,7 +1,7 @@
+import { afterEach, describe, expect, it } from 'bun:test';
 import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
-import { afterEach, describe, expect, it } from 'bun:test';
 import {
   loadEnvFiles,
   resolveScriptEntry,
@@ -27,7 +27,7 @@ afterEach(async () => {
   await Promise.all(
     tempDirs
       .splice(0)
-      .map((tempDir) => fs.rm(tempDir, { recursive: true, force: true }))
+      .map(tempDir => fs.rm(tempDir, { recursive: true, force: true }))
   );
 });
 
