@@ -1,12 +1,10 @@
-/dist
-/npm-debug.log
 /node_modules
 .DS_Store
 .idea/
 .env
+.claude/settings.local.json
 
-/logs/*
-!/logs/.gitkeep
-/savedLogs/*
-!/savedLogs/.gitkeep
-/src/steam-hwsurvey/cache/
+# Per-script data that stays local: regenerated caches, generated outputs, personal input data
+/src/*/cache/
+/src/*/output/
+/src/*/private/

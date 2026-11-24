@@ -1,13 +1,18 @@
-import dotenv from 'dotenv';
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { parseEnv } from 'node:util';
 
 export type ScriptEntry = {
-  fileName: string;
   fileDir: string;
   filePath: string;
-  filePathForImport: string;
   scriptKind: 'standalone' | 'directory';
+};
+
+export type EnvEntry = {
+  key: string;
+  value: string;
+  // Relative path of the .env file the value came from, or "shell" when the shell value won
+  source: string;
 };
 
 export const fileExists = async (filePath: string) =>
@@ -24,22 +29,17 @@ export const resolveScriptEntry = async ({
   scriptName: string;
 }): Promise<ScriptEntry | null> => {
   const standaloneEntry: ScriptEntry = {
-    fileName: `${scriptName}.ts`,
     fileDir: 'src',
     filePath: `src/${scriptName}.ts`,
-    filePathForImport: `../src/${scriptName}.ts`,
     scriptKind: 'standalone',
   };
-
   if (await fileExists(path.resolve(rootDir, standaloneEntry.filePath))) {
     return standaloneEntry;
   }
 
   const directoryEntry: ScriptEntry = {
-    fileName: 'index.ts',
     fileDir: `src/${scriptName}`,
     filePath: `src/${scriptName}/index.ts`,
-    filePathForImport: `../src/${scriptName}/index.ts`,
     scriptKind: 'directory',
   };
   if (await fileExists(path.resolve(rootDir, directoryEntry.filePath))) {
@@ -57,14 +57,14 @@ export const getEnvFilePaths = ({
   scriptEntry: ScriptEntry;
 }) => {
   const envFilePaths = [path.resolve(rootDir, '.env')];
-
   if (scriptEntry.scriptKind === 'directory') {
     envFilePaths.push(path.resolve(rootDir, scriptEntry.fileDir, '.env'));
   }
-
   return envFilePaths;
 };
 
+// Loads the root .env, then the script's .env. Later files override earlier ones,
+// and values already set in the shell always win.
 export const loadEnvFiles = async ({
   rootDir,
   scriptEntry,
@@ -73,26 +73,27 @@ export const loadEnvFiles = async ({
   rootDir: string;
   scriptEntry: ScriptEntry;
   env?: NodeJS.ProcessEnv;
-}) => {
-  // Preserve shell-provided env while allowing later files to override earlier ones.
-  const initialEnvKeys = new Set(Object.keys(env));
+}): Promise<EnvEntry[]> => {
+  const shellKeys = new Set(Object.keys(env));
+  const entries = new Map<string, EnvEntry>();
 
   for (const envFilePath of getEnvFilePaths({ rootDir, scriptEntry })) {
     if (!(await fileExists(envFilePath))) {
       continue;
     }
 
-    const envFileContents = await fs.readFile(envFilePath, 'utf-8');
-    const parsedEnv = dotenv.parse(envFileContents);
+    const source = path.relative(rootDir, envFilePath);
+    const parsedEnv = parseEnv(await fs.readFile(envFilePath, 'utf-8'));
 
-    for (const [key, value] of Object.entries(parsedEnv)) {
-      if (initialEnvKeys.has(key)) {
+    for (const [key, value = ''] of Object.entries(parsedEnv)) {
+      if (shellKeys.has(key)) {
+        entries.set(key, { key, value: env[key] ?? '', source: 'shell' });
         continue;
       }
-
       env[key] = value;
+      entries.set(key, { key, value, source });
     }
   }
 
-  return env;
+  return [...entries.values()].sort((a, b) => a.key.localeCompare(b.key));
 };

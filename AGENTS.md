@@ -1,59 +1,33 @@
-# Repository Guidelines
+# Scripts collection
 
-## Project Structure & Module Organization
-- `src/index.ts` is the runtime dispatcher. It resolves scripts in this order: `src/index-<name>.ts`, then `src/<name>/index.ts`.
-- `src/index-default.ts` is the fallback entrypoint when no script name is provided.
-- Prefer `src/<scriptName>/index.ts` for anything beyond a trivial one-file script. Keep script-specific assets, fixtures, scratch output, and `readme.md` files inside that same directory.
-- Use `src/index-<name>.ts` only for small standalone scripts that do not need supporting files.
-- Put reusable cross-script utilities in `src/utils`. Keep one-off helpers inside the owning script directory instead of promoting them prematurely.
-- `generate.ts` scaffolds a new script directory at `src/<name>/index.ts`; use that pattern when adding new scripts.
-- If a script needs special config or isolated tooling, keep it self-contained inside its own `src/<scriptName>/` directory, following the existing examples.
+Small TypeScript scripts (file processing, data conversion, POCs), kept so they can be found and rerun later.
 
+## Layout
 
-Service example pattern:
-```ts
-export type MultiplyService = ReturnType<typeof createMultiplyService>;
-export const createMultiplyService = () => ({
-  multiply: (a: number, b: number) => a * b,
-});
+- `src/<name>/index.ts`: one directory per script, with its readme, fixtures, and helpers. Use `src/<name>.ts` only for a script that is a single file.
+- `src/utils/`: pure utilities used by more than one script. One-off helpers stay in the script's directory.
+- `runtime/`: the runner (arguments, `.env` loading, secret masking, `help`).
+- Gitignored per script: `cache/`, `output/`, and `private/` for personal input data.
 
-export type ExampleService = ReturnType<typeof createExampleService>;
-export const createExampleService = ({
-  multiplyService,
-}: {
-  multiplyService: MultiplyService;
-}) => ({
-  handleExample: (a: number, b: number) => multiplyService.multiply(a, b),
-});
-```
+## Writing a script
 
-## Build, Test, and Development Commands
-- `bun install` installs dependencies.
-- `bun start` runs the default script via `src/index-default.ts`.
-- `bun start <script> [args...]` runs `src/index-<script>.ts` or `src/<script>/index.ts`.
-- `bun run start:watch -- <script> [args...]` reruns the selected script on file changes.
-- `bun test` runs the Bun test suite (`*.test.ts` files).
-- `bun run generate -- <script-name>` creates a new `src/<script-name>/index.ts` scaffold.
-- `npm run start-node -- <script> [args...]` is the Node/`ts-node` fallback when Bun is not being used.
-- `bunx prettier --write <paths>` formats touched files using the repo Prettier config when needed.
+- Run `nub run start help` first; extend a matching script instead of adding a duplicate.
+- Create scripts with `nub run generate <name>`. The entry starts with a one-line `/** description */` (shown by `help`) and default-exports `async (args: Arguments, context: Context)`. Export a zod `schema` to validate arguments.
+- Resolve paths from `context.scriptDir`, not the current directory.
+- If the script takes arguments or input files, add a `readme.md` with an example command.
+- Secrets go in `.env` or `src/<name>/.env`, never in code. Never print secrets: the runner masks known values in output, not in written files or child processes.
 
-## Architectural guidelines
-- Avoid unnecessary abstractions: keep modules simple, focused, and single responsibility
-- Always respect established patterns if asked or pointed to explicitly.
-- Explicit orchestration over indirection: route/service code should clearly show the data flow.
-- Anti-abstraction bias for transformation code: avoid “helper layers” that hide response shaping.
-- Strict legacy isolation: backward compatibility is preserved, but legacy terms/fields are not allowed to leak into V2.
-- Consistency across code, tests, docs, and Bruno collections is required, not optional.
-- Favor readability and local clarity over generic DRY abstractions, especially those that perpetuate legacy architecture.
-- Avoid unnecessary abstraction – each abstraction must have a good reason to exist. Prefer verbosity over multiplying abstractions.
+## Tooling
 
-## Coding Style & Naming Conventions
-- Use TypeScript with strict typing; avoid `any` unless unavoidable.
-- Formatting is enforced by Prettier (`.prettierrc.mjs`): single quotes, trailing commas (es5), sorted imports.
-- Use 2-space indentation (Prettier default).
-- Utilities and helpers use `camelCase` filenames (for example, `fileCache.ts`).
-- Service files follow `Feature.service.ts` naming (for example, `Example.service.ts`, `Multiply.service.ts`).
+Use nub: `nub run start <name> [args]`, `nub run start:watch <name>`, `nubx <tool>`, `nub add <pkg>`. Keep `bun.lock`; nub maintains it. `node_modules` stays local (`enableGlobalVirtualStore=false` in `.npmrc`).
 
-## Testing Guidelines
-- Primary framework: Bun test runner (`bun:test`).
-- Test files use `*.test.ts` naming (example: `src/shared/utilities/timer.test.ts`).
+After changes run `nub run check` (Biome lint, typecheck, Vitest). Tests are `*.test.ts` next to the code. Scripts listed in `exclude` in `tsconfig.json` are not typechecked; remove a script from that list when you fix it.
+
+## Code style
+
+- Strict TypeScript; avoid `any`. Follow `biome.json`. `camelCase` file names.
+- Keep the data flow visible in the script's `index.ts`. Prefer some repetition over helper layers; every abstraction needs a concrete reason.
+
+## Commits
+
+Commit each new or changed script separately with a short capitalized subject (`Added budget import`). Never commit secrets or `cache/`, `output/`, `private/`.

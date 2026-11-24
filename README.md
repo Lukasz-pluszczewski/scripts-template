@@ -1,80 +1,58 @@
-# Scripts
+# Scripts collection
 
-> Script runner for fast prototyping
+Small TypeScript scripts kept in one place: file processing, data conversion, quick POCs. Runs on Node 24 through [nub](https://nubjs.com/).
 
-### Run the given script
+## Setup
 
-To run the `src/index-foo.ts` file:
-
-```bash
-bun start foo
+```sh
+nub install
+nub run start help
 ```
 
-## Run the script in directory
+`node_modules` is installed locally, not linked to nub's global store, so `du -sh node_modules` shows its real size.
 
-To run the `src/bar/index.ts` file (if there is both `src/bar/index.ts` and `src/index-bar.ts` the index-bar.ts file will run):
+## Commands
 
-```bash
-bun start bar
-```
+| Command | Purpose |
+| --- | --- |
+| `nub run start help` | List scripts with their descriptions |
+| `nub run start <script> [args...]` | Run `src/<script>.ts` or `src/<script>/index.ts` (`default` when omitted) |
+| `nub run start:watch <script> [args...]` | Rerun the script on file changes |
+| `nub run generate <script>` | Create `src/<script>/index.ts` |
+| `nub run check` | Biome lint, typecheck and tests |
+| `nub run format` | Format with Biome |
 
-### Run the default script
+## Writing a script
 
-To run the `src/index-default.ts` file
+```ts
+/** One-line description, shown by `nub run start help` */
+import type { Arguments, Context } from '../../runtime';
 
-```bash
-bun start
-```
-
-### Run the script with arguments and options
-
-To run the index-foo.ts file with arguments:
-
-```bash
-bun start foo argument -a -b --arg1=foo --arg2=bar -- --arg3=foobar
-```
-
-If index-foo.ts file exports a function like this:
-
-```typescript
-export default async (args) => {
+export default async (args: Arguments, context: Context) => {
   // ...
 };
 ```
 
-its args param will be:
+`nub run start foo input.tsv -v --limit=10 -- --raw` passes:
 
 ```json5
-{
-  _: ['argument'],
-  a: true,
-  b: true,
-  arg1: 'foo',
-  arg2: 'bar',
-  '--': ['--arg3=foobar'],
-}
+{ _: ['input.tsv'], v: true, limit: 10, '--': ['--raw'] }
 ```
 
-### `.env` loading
+If the script exports a zod `schema`, the runner parses the arguments with it first.
 
-Before running a script, the runner loads environment files in this order:
+`context` holds `rootDir`, `scriptDir` (the script's directory) and `env` (the variables loaded from `.env` files).
 
-1. `/.env` from the repository root
-2. `src/<script>/.env` for directory-based scripts such as `src/foo/index.ts`
+## Environment and secrets
 
-If the same variable exists in both files, the script-specific `.env` wins. Variables already present in the shell environment keep their existing values.
+The runner loads the root `.env`, then `src/<script>/.env` for directory scripts. The script's file overrides the root one, and values already set in the shell always win.
 
-### Usage with node
+Before the script starts, the runner prints every loaded variable with the file it came from. Values that look like secrets are shown as a fingerprint, for example `sk-p…(51) #3fa2c1`: the first 4 characters (only for values of 16+ characters), the length, and a short sha256 hash. That is enough to see which key is loaded and whether it changed.
 
-If you use node instead of [bun](https://bun.sh/), replace `bun start` with `npm run start-node` and run the following first:
+All secret-looking values in the environment, including ones set in the shell, are also replaced with their fingerprint in everything the script writes to stdout and stderr, including their URL-encoded and base64 forms. Masking does not cover files the script writes, child processes that inherit the terminal, or values shorter than 6 characters.
 
-When starting the script using node, you may need to add `--` before the arguments like this:
+A value counts as a secret when its key looks like one (`*_API_KEY`, `*_TOKEN`, `*PASSWORD*`, ...) or the value looks like a token. Keys named as public (`*_CLIENT_ID`, `*_PUBLIC_KEY`, ...) are never masked. See `runtime/secrets.ts`.
 
-```bash
-npm run start-node -- argument -a -b
-```
+## Data
 
-```bash
-npm i dotenv
-npm i --save-dev ts-node typescript dotenv
-```
+Keep script data in the script's directory. `cache/`, `output/` and `private/` directories inside a script are gitignored; put personal input data in `private/`.

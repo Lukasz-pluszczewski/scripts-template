@@ -1,15 +1,19 @@
 {
   "name": "scripts",
+  "private": true,
   "version": "2.1.0",
   "description": "scripts",
   "repository": "https://github.com/Lukasz-pluszczewski/scripts-template",
-  "main": "dist",
+  "type": "module",
   "scripts": {
-    "start": "bun run ./runtime/index.ts",
-    "start:watch": "bun --watch run ./runtime/index.ts",
-    "start-node": "ts-node ./runtime/index.ts",
-    "test": "bun test",
-    "generate": "bun run generate.ts"
+    "start": "nub --no-env-file runtime/run.ts",
+    "start:watch": "nub --no-env-file --watch runtime/run.ts",
+    "generate": "nub runtime/generate.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "format": "biome format --write ./src ./runtime",
+    "lint": "biome lint ./src ./runtime",
+    "check": "biome lint ./src ./runtime && tsc --noEmit && vitest run"
   },
   "author": "Łukasz Pluszczewski",
   "license": "MIT",
@@ -28,7 +32,7 @@
     "async-collection-utils": "^1.1.0",
     "axios": "^1.6.1",
     "bullmq": "^5.4.0",
-    "canvas": "^2.11.2",
+    "canvas": "^3",
     "cheerio": "^1.0.0-rc.12",
     "csvtojson": "^2.0.10",
     "date-fns": "^3.6.0",
@@ -48,7 +52,9 @@
     "markdown-it": "^14.1.0",
     "number-formatter": "^1.2.0",
     "openai": "^4.56.0",
+    "prettier": "^3",
     "protobufjs": "^7.5.4",
+    "react": "^18",
     "replicate": "^1.4.0",
     "simple-express-framework": "^2.4.2-rc.6",
     "sitemapper": "^3.2.9",
@@ -61,13 +67,16 @@
     "@biomejs/biome": "2.4.14",
     "@ianvs/prettier-plugin-sort-imports": "^4.6.2",
     "@types/express": "^5.0.3",
-    "@types/jest": "^29.5.8",
     "@types/lodash": "^4.17.20",
-    "@types/node": "^20.9.0",
+    "@types/node": "^24.19.2",
+    "@types/react": "^18",
     "@types/yargs-parser": "^21.0.3",
-    "bun-types": "^1.0.7",
-    "dotenv": "^16.4.5",
-    "ts-node": "^10.9.2",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^5.1.1"
+  },
+  "allowScripts": {
+    "canvas": true,
+    "msgpackr-extract": true,
+    "protobufjs": false
   }
 }

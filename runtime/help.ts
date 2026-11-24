@@ -1,138 +1,88 @@
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 
 type RunnableScript = {
   name: string;
   entryPath: string;
-  kind: 'standalone' | 'directory';
+  description: string | null;
   hasReadme: boolean;
-  isDefault: boolean;
+};
+
+// The description is the `/** ... */` comment that starts the entry file
+export const readScriptDescription = (source: string) => {
+  const comment = source.match(/^\s*\/\*\*([\s\S]*?)\*\//);
+  if (!comment) return null;
+  const description = comment[1]
+    .split('\n')
+    .map(line => line.replace(/^\s*\*?\s?/, '').trim())
+    .filter(Boolean)
+    .join(' ');
+  return description || null;
 };
 
 const getRunnableScripts = (rootDir: string): RunnableScript[] => {
   const srcDir = path.resolve(rootDir, 'src');
-
-  if (!fs.existsSync(srcDir)) {
-    return [];
-  }
-
   const scripts = new Map<string, RunnableScript>();
-  const srcEntries = fs.readdirSync(srcDir, { withFileTypes: true });
 
-  for (const entry of srcEntries) {
-    if (!entry.isFile()) {
-      continue;
-    }
+  for (const entry of fs.readdirSync(srcDir, { withFileTypes: true })) {
+    // Directories starting with "__" are templates, not scripts
+    if (entry.name.startsWith('__')) continue;
 
-    if (!entry.name.endsWith('.ts') || entry.name.endsWith('.test.ts')) {
-      continue;
-    }
+    const isStandalone =
+      entry.isFile()
+      && entry.name.endsWith('.ts')
+      && !entry.name.endsWith('.test.ts');
+    const scriptName = isStandalone ? entry.name.slice(0, -3) : entry.name;
+    const entryPath = isStandalone
+      ? `src/${entry.name}`
+      : `src/${entry.name}/index.ts`;
 
-    const scriptName = entry.name.slice(0, -3);
+    if (!(isStandalone || entry.isDirectory())) continue;
+    if (!fs.existsSync(path.resolve(rootDir, entryPath))) continue;
+    // Standalone files win over directories with the same name, as in resolveScriptEntry
+    if (scripts.has(scriptName) && !isStandalone) continue;
+
+    const scriptDir = path.resolve(srcDir, entry.name);
     scripts.set(scriptName, {
       name: scriptName,
-      entryPath: `src/${entry.name}`,
-      kind: 'standalone',
-      hasReadme: false,
-      isDefault: scriptName === 'default',
+      entryPath,
+      description: readScriptDescription(
+        fs.readFileSync(path.resolve(rootDir, entryPath), 'utf-8')
+      ),
+      hasReadme:
+        !isStandalone
+        && ['readme.md', 'README.md', 'readme'].some(fileName =>
+          fs.existsSync(path.resolve(scriptDir, fileName))
+        ),
     });
   }
 
-  for (const entry of srcEntries) {
-    if (!entry.isDirectory()) {
-      continue;
-    }
-
-    const indexPath = path.resolve(srcDir, entry.name, 'index.ts');
-    if (!fs.existsSync(indexPath) || scripts.has(entry.name)) {
-      continue;
-    }
-
-    const readmeMdPath = path.resolve(srcDir, entry.name, 'readme.md');
-    const readmePath = path.resolve(srcDir, entry.name, 'readme');
-
-    scripts.set(entry.name, {
-      name: entry.name,
-      entryPath: `src/${entry.name}/index.ts`,
-      kind: 'directory',
-      hasReadme: fs.existsSync(readmeMdPath) || fs.existsSync(readmePath),
-      isDefault: entry.name === 'default',
-    });
-  }
-
-  return Array.from(scripts.values()).sort((a, b) => {
-    if (a.isDefault && !b.isDefault) {
-      return -1;
-    }
-
-    if (!a.isDefault && b.isDefault) {
-      return 1;
-    }
-
+  return [...scripts.values()].sort((a, b) => {
+    if (a.name === 'default') return -1;
+    if (b.name === 'default') return 1;
     return a.name.localeCompare(b.name);
   });
 };
 
-export const help = () => {
-  const rootDir = path.resolve('./');
+export const help = (rootDir: string) => {
   const scripts = getRunnableScripts(rootDir);
-  const scriptLines =
-    scripts.length > 0
-      ? scripts.map(script => {
-          const markers = [
-            script.isDefault ? 'default' : null,
-            script.kind,
-            script.hasReadme ? 'readme' : null,
-          ].filter(Boolean);
+  const nameWidth = Math.max(...scripts.map(({ name }) => name.length));
 
-          return `  - ${script.name.padEnd(24)} ${script.entryPath}${
-            markers.length ? ` (${markers.join(', ')})` : ''
-          }`;
-        })
-      : ['  - No runnable scripts were found in src/.'];
-
-  const lines = [
-    'Scripts Collection Runtime Help',
-    '',
-    'Usage',
-    '  bun start',
-    '  bun start help',
-    '  bun start <script> [args...]',
-    '  bun run start:watch -- <script> [args...]',
-    '  npm run start-node -- <script> [args...]',
-    '',
-    'Runtime behavior',
-    `  - Current working directory is treated as the project root: ${rootDir}`,
-    '  - If no script name is provided, the runtime runs `default`.',
-    '  - `help` is a reserved built-in command handled by the runtime.',
-    '  - The first positional argument selects the script.',
-    '  - Remaining positional arguments are forwarded to the script.',
-    '  - Named flags are forwarded as parsed CLI options.',
-    '  - If a script exports `schema`, the runtime uses it to parse and validate arguments.',
-    '  - Standalone entries in `src/` are preferred over directory entries with the same script name.',
-    '  - Directory scripts are expected at `src/<script>/index.ts`.',
-    '',
-    'Environment loading',
-    '  - `.env` in the repository root is loaded for every script.',
-    '  - Directory scripts also load `src/<script>/.env`.',
-    '  - Shell-provided environment variables always win.',
-    '  - Script-local `.env` values override values from the root `.env`.',
-    '',
-    'Common commands',
-    '  - `bun test` runs the Bun test suite.',
-    '  - `bun run generate -- <script-name>` scaffolds `src/<script-name>/index.ts`.',
-    '  - `bunx prettier --write <paths>` formats touched files with the repo Prettier config.',
-    '',
-    'Examples',
-    '  - `bun start myFancyScript`',
-    '  - `bun start otherScript foo bar --flag`',
-    '  - `bun run start:watch -- myFancyScript`',
-    '  - `npm run start-node -- myFancyScript`',
-    '',
-    `Available scripts (${scripts.length})`,
-    '  - Legend: `default` = runs when no script is provided, `readme` = script has local docs.',
-    ...scriptLines,
-  ];
-
-  console.log(lines.join('\n'));
+  console.log(
+    [
+      'Usage',
+      '  nub run start [<script>] [args...]   runs src/<script>.ts or src/<script>/index.ts ("default" when omitted)',
+      '  nub run start:watch <script> [args...]',
+      '  nub run generate <script>           creates src/<script>/index.ts',
+      '',
+      'Env: the root .env, then src/<script>/.env, are loaded; shell values win.',
+      'Values that look like secrets are masked in all script output.',
+      '',
+      `Scripts (${scripts.length}, [readme] = has src/<script>/readme.md)`,
+      ...scripts.map(
+        ({ name, description, hasReadme }) =>
+          `  ${name.padEnd(nameWidth)}  ${description ?? '(no description)'}${hasReadme ? ' [readme]' : ''}`
+      ),
+    ].join('\n')
+  );
 };
